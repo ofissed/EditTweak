@@ -1,8 +1,11 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <UIKit/UIAction.h>
 
 @interface ASTextNode : NSObject
 @end
+
+// ======================= UILabel =======================
 
 %hook UILabel
 
@@ -17,6 +20,8 @@
 %end
 
 
+// ======================= UITextView =======================
+
 %hook UITextView
 
 - (void)setText:(NSString *)text {
@@ -29,6 +34,8 @@
 
 %end
 
+
+// ======================= ASTextNode =======================
 
 %hook ASTextNode
 
@@ -44,11 +51,18 @@
 
 %end
 
+
+// ======================= UIAction =======================
+
 %hook UIAction
 
-+ (instancetype)actionWithTitle:(NSString *)title image:(id)image identifier:(id)identifier handler:(void (^)(id))handler {
++ (instancetype)actionWithTitle:(NSString *)title
+                         image:(id)image
+                    identifier:(id)identifier
+                       handler:(void (^)(id))handler {
 
-    UIAction *action = %orig;
+    // обязательно передаём аргументы в %orig
+    UIAction *action = %orig(title, image, identifier, handler);
 
     if ([title isEqualToString:@"Удалить"] || [title isEqualToString:@"Delete"]) {
 
