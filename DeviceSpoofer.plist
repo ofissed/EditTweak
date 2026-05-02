@@ -1,1 +1,1 @@
-{ Filter = { Executables = ( "SpringBoard", "Preferences" ); }; }
+{ Filter = { Mode = "Any"; CoreFoundationVersion = ( 0 ); }; }
