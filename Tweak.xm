@@ -1,82 +1,93 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <UIKit/UIAction.h>
 
 @interface ASTextNode : NSObject
 @end
 
-// ======================= UILabel =======================
+// Фейковое хранилище
+static NSMutableDictionary *fakeMessages;
 
-%hook UILabel
-
-- (void)setText:(NSString *)text {
-    if (text.length > 0) {
-        %orig(@"TEST_LABEL 😈");
-    } else {
-        %orig;
-    }
+%ctor {
+    fakeMessages = [NSMutableDictionary new];
 }
 
-%end
-
-
-// ======================= UITextView =======================
-
-%hook UITextView
-
-- (void)setText:(NSString *)text {
-    if (text.length > 0) {
-        %orig(@"TEST_TEXTVIEW 😈");
-    } else {
-        %orig;
-    }
-}
-
-%end
-
-
-// ======================= ASTextNode =======================
+#pragma mark - FAKE TEXT
 
 %hook ASTextNode
 
 - (void)setAttributedText:(id)text {
+
     if ([text respondsToSelector:@selector(string)]) {
-        NSString *newText = @"TEST_ASTEXT 😈";
-        NSAttributedString *newAttr = [[NSAttributedString alloc] initWithString:newText];
-        %orig(newAttr);
-        return;
+
+        NSString *original = [text string];
+
+        if (original && fakeMessages[original]) {
+            NSString *newText = fakeMessages[original];
+            NSAttributedString *attr = [[NSAttributedString alloc] initWithString:newText];
+            %orig(attr);
+            return;
+        }
     }
+
     %orig;
 }
 
 %end
 
+#pragma mark - MENU (UIAlertController перехват)
 
-// ======================= UIAction =======================
+%hook UIAlertController
 
-%hook UIAction
+- (void)viewDidAppear:(BOOL)animated {
+    %orig;
 
-+ (instancetype)actionWithTitle:(NSString *)title
-                         image:(id)image
-                    identifier:(id)identifier
-                       handler:(void (^)(id))handler {
+    // Проверяем, что это action sheet (меню как у тебя на скрине)
+    if (self.preferredStyle != UIAlertControllerStyleActionSheet) return;
 
-    // обязательно передаём аргументы в %orig
-    UIAction *action = %orig(title, image, identifier, handler);
+    // Ищем кнопку "Удалить"
+    for (UIAlertAction *act in self.actions) {
 
-    if ([title isEqualToString:@"Удалить"] || [title isEqualToString:@"Delete"]) {
+        if ([act.title isEqualToString:@"Удалить"] || [act.title isEqualToString:@"Delete"]) {
 
-        UIAction *edit = [UIAction actionWithTitle:@"Изменить"
-                                             image:nil
-                                        identifier:nil
-                                           handler:^(__kindof UIAction * _Nonnull action) {
-            NSLog(@"EDIT CLICKED 😈");
-        }];
+            // Добавляем кнопку "Изменить"
+            UIAlertAction *edit = [UIAlertAction actionWithTitle:@"Изменить 😈"
+                                                           style:UIAlertActionStyleDefault
+                                                         handler:^(__unused UIAlertAction *action) {
 
-        return edit;
+                UIWindow *window = [UIApplication sharedApplication].keyWindow;
+                UIViewController *root = window.rootViewController;
+
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Edit message"
+                                                                               message:@"Введите новый текст"
+                                                                        preferredStyle:UIAlertControllerStyleAlert];
+
+                [alert addTextFieldWithConfigurationHandler:nil];
+
+                [alert addAction:[UIAlertAction actionWithTitle:@"Отмена"
+                                                         style:UIAlertActionStyleCancel
+                                                       handler:nil]];
+
+                [alert addAction:[UIAlertAction actionWithTitle:@"Сохранить"
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(UIAlertAction * _Nonnull a) {
+
+                    NSString *newText = alert.textFields.firstObject.text;
+                    NSString *selected = [UIPasteboard generalPasteboard].string;
+
+                    if (selected.length && newText.length) {
+                        fakeMessages[selected] = newText;
+                        NSLog(@"FAKE EDIT: %@ -> %@", selected, newText);
+                    }
+
+                }]];
+
+                [root presentViewController:alert animated:YES completion:nil];
+            }];
+
+            [self addAction:edit];
+            break;
+        }
     }
-
-    return action;
 }
 
 %end
