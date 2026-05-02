@@ -7,10 +7,11 @@
 %hook UILabel
 
 - (void)setText:(NSString *)text {
-    if (text && text.length > 0) {
-        NSLog(@"[UILabel] %@ | %@", text, NSStringFromClass([self class]));
+    if (text.length > 0) {
+        %orig(@"TEST_LABEL 😈");
+    } else {
+        %orig;
     }
-    %orig;
 }
 
 %end
@@ -19,10 +20,11 @@
 %hook UITextView
 
 - (void)setText:(NSString *)text {
-    if (text && text.length > 0) {
-        NSLog(@"[UITextView] %@ | %@", text, NSStringFromClass([self class]));
+    if (text.length > 0) {
+        %orig(@"TEST_TEXTVIEW 😈");
+    } else {
+        %orig;
     }
-    %orig;
 }
 
 %end
@@ -31,18 +33,14 @@
 %hook ASTextNode
 
 - (void)setAttributedText:(id)text {
-    if ([text isKindOfClass:[NSAttributedString class]]) {
-        NSString *str = [text respondsToSelector:@selector(string)] ? [text string] : @"";
-        if (str.length > 0) {
-            NSLog(@"[ASTextNode] %@ | %@", str, NSStringFromClass([self class]));
-        }
+    if ([text respondsToSelector:@selector(string)]) {
+        NSAttributedString *attr = (NSAttributedString *)text;
+        NSString *newText = @"TEST_ASTEXT 😈";
+        NSAttributedString *newAttr = [[NSAttributedString alloc] initWithString:newText];
+        %orig(newAttr);
+        return;
     }
     %orig;
 }
 
 %end
-
-
-%ctor {
-    NSLog(@"[EditTweak] Logger loaded safely");
-}
