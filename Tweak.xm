@@ -3,6 +3,9 @@
 #import <objc/runtime.h>
 #import <sys/sysctl.h>
 
+// Объявление MobileGestalt функции
+extern CFTypeRef MGCopyAnswer(CFStringRef question);
+
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
 
