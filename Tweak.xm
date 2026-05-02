@@ -4,7 +4,7 @@
 %hook UILabel
 
 - (void)setText:(NSString *)text {
-    if (text && text.length > 0) {
+    if ([text isKindOfClass:[NSString class]] && text.length > 0) {
         NSLog(@"[UILabel] %@ | %@", text, NSStringFromClass([self class]));
     }
     %orig;
@@ -16,7 +16,7 @@
 %hook UITextView
 
 - (void)setText:(NSString *)text {
-    if (text && text.length > 0) {
+    if ([text isKindOfClass:[NSString class]] && text.length > 0) {
         NSLog(@"[UITextView] %@ | %@", text, NSStringFromClass([self class]));
     }
     %orig;
@@ -25,11 +25,11 @@
 %end
 
 
-%hook NSObject
+%hook ASTextNode
 
 - (void)setAttributedText:(NSAttributedString *)text {
-    if (text.string.length > 0) {
-        NSLog(@"[ATTR] %@ | %@", text.string, NSStringFromClass([self class]));
+    if ([text isKindOfClass:[NSAttributedString class]] && text.string.length > 0) {
+        NSLog(@"[ASTextNode] %@ | %@", text.string, NSStringFromClass([self class]));
     }
     %orig;
 }
@@ -38,5 +38,5 @@
 
 
 %ctor {
-    NSLog(@"[EditTweak] Logger loaded!");
+    NSLog(@"[EditTweak] Safe logger loaded");
 }
