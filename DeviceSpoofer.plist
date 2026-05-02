@@ -1,1 +1,1 @@
-{}
+{ Filter = { Executables = ( "SpringBoard", "Preferences" ); }; }
