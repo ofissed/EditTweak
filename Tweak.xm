@@ -3,9 +3,6 @@
 #import <objc/runtime.h>
 #import <sys/sysctl.h>
 
-// Объявление MobileGestalt функции
-extern CFTypeRef MGCopyAnswer(CFStringRef question);
-
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
 
@@ -113,93 +110,6 @@ static void showEditDialog(UIViewController *fromVC) {
     NSLog(@"[EditTweak] Classes logged to /var/mobile/Documents/telegram_classes.txt");
 }
 
-// Хук UIDevice для подмены модели телефона
-%hook UIDevice
-
-- (NSString *)model {
-    NSString *result = @"iPhone";
-    NSLog(@"[EditTweak] UIDevice.model called, returning: %@", result);
-    return result;
-}
-
-- (NSString *)localizedModel {
-    NSString *result = @"iPhone";
-    NSLog(@"[EditTweak] UIDevice.localizedModel called, returning: %@", result);
-    return result;
-}
-
-- (NSString *)name {
-    NSString *result = @"iPhone 15 Pro Max";
-    NSLog(@"[EditTweak] UIDevice.name called, returning: %@", result);
-    return result;
-}
-
-- (NSString *)systemName {
-    return %orig;
-}
-
-- (NSString *)systemVersion {
-    return %orig;
-}
-
-%end
-
-// Хук для sysctlbyname (более глубокая подмена)
-%hookf(int, sysctlbyname, const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
-    if (name) {
-        if (strcmp(name, "hw.machine") == 0) {
-            // iPhone 15 Pro Max = iPhone16,2
-            if (oldp && oldlenp && *oldlenp > 0) {
-                const char *spoofed = "iPhone16,2";
-                size_t len = strlen(spoofed) + 1;
-                if (*oldlenp >= len) {
-                    strcpy((char *)oldp, spoofed);
-                    *oldlenp = len;
-                    NSLog(@"[EditTweak] sysctlbyname hw.machine spoofed to: %s", spoofed);
-                    return 0;
-                }
-            }
-        } else if (strcmp(name, "hw.model") == 0) {
-            // Дополнительная подмена
-            if (oldp && oldlenp && *oldlenp > 0) {
-                const char *spoofed = "D84AP"; // iPhone 15 Pro Max model
-                size_t len = strlen(spoofed) + 1;
-                if (*oldlenp >= len) {
-                    strcpy((char *)oldp, spoofed);
-                    *oldlenp = len;
-                    NSLog(@"[EditTweak] sysctlbyname hw.model spoofed to: %s", spoofed);
-                    return 0;
-                }
-            }
-        }
-    }
-    
-    return %orig;
-}
-
-// Хук MGCopyAnswer для подмены на уровне MobileGestalt
-%hookf(CFTypeRef, MGCopyAnswer, CFStringRef question) {
-    if (question) {
-        NSString *key = (__bridge NSString *)question;
-        
-        if ([key isEqualToString:@"ProductType"]) {
-            NSLog(@"[EditTweak] MGCopyAnswer ProductType spoofed");
-            return (__bridge_retained CFTypeRef)@"iPhone16,2";
-        } else if ([key isEqualToString:@"DeviceName"]) {
-            NSLog(@"[EditTweak] MGCopyAnswer DeviceName spoofed");
-            return (__bridge_retained CFTypeRef)@"iPhone 15 Pro Max";
-        } else if ([key isEqualToString:@"HWModelStr"]) {
-            NSLog(@"[EditTweak] MGCopyAnswer HWModelStr spoofed");
-            return (__bridge_retained CFTypeRef)@"D84AP";
-        } else if ([key isEqualToString:@"marketing-name"] || [key isEqualToString:@"MarketingName"]) {
-            NSLog(@"[EditTweak] MGCopyAnswer marketing-name spoofed");
-            return (__bridge_retained CFTypeRef)@"iPhone 15 Pro Max";
-        }
-    }
-    
-    return %orig;
-}
-
 // Хук UILongPressGestureRecognizer для захвата текста
 %hook UILongPressGestureRecognizer
 
@@ -284,6 +194,52 @@ static void showEditDialog(UIViewController *fromVC) {
 }
 
 %end
+
+// Хук UIDevice для подмены модели телефона
+%hook UIDevice
+
+- (NSString *)model {
+    return @"iPhone";
+}
+
+- (NSString *)localizedModel {
+    return @"iPhone";
+}
+
+- (NSString *)name {
+    return @"iPhone 15 Pro Max";
+}
+
+%end
+
+// Хук для sysctlbyname (подмена hw.machine)
+%hookf(int, sysctlbyname, const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
+    if (name) {
+        if (strcmp(name, "hw.machine") == 0) {
+            if (oldp && oldlenp && *oldlenp > 0) {
+                const char *spoofed = "iPhone16,2";
+                size_t len = strlen(spoofed) + 1;
+                if (*oldlenp >= len) {
+                    strcpy((char *)oldp, spoofed);
+                    *oldlenp = len;
+                    return 0;
+                }
+            }
+        } else if (strcmp(name, "hw.model") == 0) {
+            if (oldp && oldlenp && *oldlenp > 0) {
+                const char *spoofed = "D84AP";
+                size_t len = strlen(spoofed) + 1;
+                if (*oldlenp >= len) {
+                    strcpy((char *)oldp, spoofed);
+                    *oldlenp = len;
+                    return 0;
+                }
+            }
+        }
+    }
+    
+    return %orig;
+}
 
 // Хук UILabel для подмены текста
 %hook UILabel
