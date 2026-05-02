@@ -106,40 +106,27 @@ static void showEditDialog(UIViewController *fromVC) {
 
 %end
 
-// Хук UIAlertAction для подмены handler'а кнопки "Скопировать"
-%hook UIAlertAction
+// Хук UIPasteboard для перехвата копирования
+%hook UIPasteboard
 
-+ (instancetype)actionWithTitle:(NSString *)title style:(UIAlertActionStyle)style handler:(void (^)(UIAlertAction *))handler {
-    NSLog(@"[EditTweak] UIAlertAction created with title: %@", title);
+- (void)setString:(NSString *)string {
+    %orig;
     
-    if ([title containsString:@"Скопировать"] || [title containsString:@"Copy"]) {
-        NSLog(@"[EditTweak] Intercepting Copy button!");
-        
-        // Сохраняем оригинальный handler
-        void (^originalHandler)(UIAlertAction *) = handler;
-        
-        // Подменяем на наш
-        handler = ^(UIAlertAction *action) {
-            NSLog(@"[EditTweak] Copy button pressed!");
-            
-            // Выполняем оригинальное копирование
-            if (originalHandler) {
-                originalHandler(action);
-            }
-            
-            // Показываем диалог редактирования
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                NSLog(@"[EditTweak] Showing edit dialog...");
-                UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
-                while (rootVC.presentedViewController) {
-                    rootVC = rootVC.presentedViewController;
-                }
-                showEditDialog(rootVC);
-            });
-        };
-    }
+    NSLog(@"[EditTweak] Text copied to clipboard: %@", string);
     
-    return %orig(title, style, handler);
+    // Сохраняем скопированный текст
+    lastLongPressedText = string;
+    
+    // Показываем диалог редактирования через 0.5 сек
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        NSLog(@"[EditTweak] Showing edit dialog after copy...");
+        
+        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+        while (rootVC.presentedViewController) {
+            rootVC = rootVC.presentedViewController;
+        }
+        showEditDialog(rootVC);
+    });
 }
 
 %end
