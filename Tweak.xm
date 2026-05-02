@@ -6,10 +6,10 @@ static NSString *lastLongPressedText = nil;
 
 %ctor {
     editedMessages = [NSMutableDictionary new];
-    NSLog(@"[EditTweak] Loaded!");
+    NSLog(@"[EditTweak] ===== TWEAK LOADED =====");
 }
 
-// Хук UILongPressGestureRecognizer для захвата текста при долгом нажатии
+// Хук UILongPressGestureRecognizer для захвата текста
 %hook UILongPressGestureRecognizer
 
 - (void)setState:(UIGestureRecognizerState)state {
@@ -17,108 +17,136 @@ static NSString *lastLongPressedText = nil;
     
     if (state == UIGestureRecognizerStateBegan) {
         UIView *view = self.view;
+        NSLog(@"[EditTweak] Long press detected on view: %@", NSStringFromClass([view class]));
         
-        // Пытаемся найти текст в view
-        if ([view isKindOfClass:[UILabel class]]) {
-            lastLongPressedText = [(UILabel *)view text];
-            NSLog(@"[EditTweak] Long press on UILabel: %@", lastLongPressedText);
-        } else if ([view isKindOfClass:[UITextView class]]) {
-            lastLongPressedText = [(UITextView *)view text];
-            NSLog(@"[EditTweak] Long press on UITextView: %@", lastLongPressedText);
-        } else {
-            // Ищем UILabel или UITextView в subviews
-            for (UIView *subview in view.subviews) {
-                if ([subview isKindOfClass:[UILabel class]]) {
-                    lastLongPressedText = [(UILabel *)subview text];
-                    NSLog(@"[EditTweak] Long press found UILabel in subview: %@", lastLongPressedText);
-                    break;
-                } else if ([subview isKindOfClass:[UITextView class]]) {
-                    lastLongPressedText = [(UITextView *)subview text];
-                    NSLog(@"[EditTweak] Long press found UITextView in subview: %@", lastLongPressedText);
-                    break;
-                }
-            }
+        // Рекурсивный поиск текста
+        lastLongPressedText = [self findTextInView:view];
+        if (lastLongPressedText) {
+            NSLog(@"[EditTweak] Captured text: %@", lastLongPressedText);
         }
     }
 }
 
+%new
+- (NSString *)findTextInView:(UIView *)view {
+    if ([view isKindOfClass:[UILabel class]]) {
+        return [(UILabel *)view text];
+    }
+    if ([view isKindOfClass:[UITextView class]]) {
+        return [(UITextView *)view text];
+    }
+    
+    for (UIView *subview in view.subviews) {
+        NSString *text = [self findTextInView:subview];
+        if (text && text.length > 0) return text;
+    }
+    return nil;
+}
+
 %end
 
-// Хук UIAlertController для добавления кнопки
-%hook UIAlertController
+// Хук UIViewController для перехвата всех модальных окон
+%hook UIViewController
 
-- (void)viewDidAppear:(BOOL)animated {
-    %orig;
+- (void)presentViewController:(UIViewController *)viewControllerToPresent animated:(BOOL)flag completion:(void (^)(void))completion {
+    NSLog(@"[EditTweak] presentViewController called: %@", NSStringFromClass([viewControllerToPresent class]));
     
-    if (self.preferredStyle != UIAlertControllerStyleActionSheet) return;
-    
-    // Ищем кнопку "Удалить"
-    BOOL hasDeleteButton = NO;
-    for (UIAlertAction *action in self.actions) {
-        if ([action.title containsString:@"Удалить"] || [action.title containsString:@"Delete"]) {
-            hasDeleteButton = YES;
-            break;
-        }
-    }
-    
-    if (!hasDeleteButton) return;
-    
-    // Проверяем, не добавили ли мы уже кнопку
-    for (UIAlertAction *action in self.actions) {
-        if ([action.title containsString:@"Изменить"]) {
-            return; // Уже добавлена
-        }
-    }
-    
-    // Добавляем кнопку "Изменить"
-    UIAlertAction *editAction = [UIAlertAction actionWithTitle:@"✏️ Изменить"
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(UIAlertAction *act) {
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Изменить сообщение"
-                                                                       message:@"Введите новый текст"
-                                                                preferredStyle:UIAlertControllerStyleAlert];
+    // Проверяем UIAlertController
+    if ([viewControllerToPresent isKindOfClass:[UIAlertController class]]) {
+        UIAlertController *alert = (UIAlertController *)viewControllerToPresent;
         
-        [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
-            // Предзаполняем текущий текст если есть
-            if (lastLongPressedText) {
-                textField.text = lastLongPressedText;
-            }
-        }];
-        
-        [alert addAction:[UIAlertAction actionWithTitle:@"Отмена"
-                                                 style:UIAlertActionStyleCancel
-                                               handler:nil]];
-        
-        [alert addAction:[UIAlertAction actionWithTitle:@"Сохранить"
-                                                 style:UIAlertActionStyleDefault
-                                               handler:^(UIAlertAction *a) {
-            NSString *newText = alert.textFields.firstObject.text;
-            NSString *originalText = lastLongPressedText;
+        if (alert.preferredStyle == UIAlertControllerStyleActionSheet) {
+            NSLog(@"[EditTweak] Found ActionSheet with %lu actions", (unsigned long)alert.actions.count);
             
-            // Fallback на clipboard если lastLongPressedText пустой
-            if (!originalText || originalText.length == 0) {
-                originalText = [UIPasteboard generalPasteboard].string;
+            // Логируем все кнопки
+            for (UIAlertAction *action in alert.actions) {
+                NSLog(@"[EditTweak] Action title: %@", action.title);
             }
             
-            if (newText.length && originalText.length) {
-                editedMessages[originalText] = newText;
-                NSLog(@"[EditTweak] Saved: %@ -> %@", originalText, newText);
+            // Ищем кнопку удаления
+            BOOL hasDelete = NO;
+            for (UIAlertAction *action in alert.actions) {
+                if ([action.title containsString:@"Удалить"] || 
+                    [action.title containsString:@"Delete"] ||
+                    [action.title containsString:@"Копировать"] ||
+                    [action.title containsString:@"Copy"]) {
+                    hasDelete = YES;
+                    break;
+                }
+            }
+            
+            if (hasDelete) {
+                // Проверяем, не добавили ли уже
+                BOOL alreadyAdded = NO;
+                for (UIAlertAction *action in alert.actions) {
+                    if ([action.title containsString:@"Изменить"]) {
+                        alreadyAdded = YES;
+                        break;
+                    }
+                }
                 
-                // Принудительно обновляем UI
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-                    [[NSNotificationCenter defaultCenter] postNotificationName:@"EditTweakMessageUpdated" object:nil];
-                });
+                if (!alreadyAdded) {
+                    NSLog(@"[EditTweak] Adding Edit button!");
+                    
+                    UIAlertAction *editAction = [UIAlertAction actionWithTitle:@"✏️ Изменить"
+                                                                         style:UIAlertActionStyleDefault
+                                                                       handler:^(UIAlertAction *act) {
+                        [self showEditDialog];
+                    }];
+                    
+                    [alert addAction:editAction];
+                }
             }
-        }]];
-        
-        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
-        while (rootVC.presentedViewController) {
-            rootVC = rootVC.presentedViewController;
         }
-        [rootVC presentViewController:alert animated:YES completion:nil];
+    }
+    
+    %orig;
+}
+
+%new
+- (void)showEditDialog {
+    NSLog(@"[EditTweak] showEditDialog called");
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Изменить сообщение"
+                                                                   message:@"Введите новый текст"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        if (lastLongPressedText) {
+            textField.text = lastLongPressedText;
+        }
     }];
     
-    [self addAction:editAction];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Отмена"
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
+    
+    [alert addAction:[UIAlertAction actionWithTitle:@"Сохранить"
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(UIAlertAction *a) {
+        NSString *newText = alert.textFields.firstObject.text;
+        NSString *originalText = lastLongPressedText;
+        
+        if (!originalText || originalText.length == 0) {
+            originalText = [UIPasteboard generalPasteboard].string;
+        }
+        
+        if (newText.length && originalText.length) {
+            editedMessages[originalText] = newText;
+            NSLog(@"[EditTweak] Saved edit: %@ -> %@", originalText, newText);
+            
+            // Обновляем UI
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:@"EditTweakMessageUpdated" object:nil];
+            });
+        }
+    }]];
+    
+    UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+    while (rootVC.presentedViewController) {
+        rootVC = rootVC.presentedViewController;
+    }
+    [rootVC presentViewController:alert animated:YES completion:nil];
 }
 
 %end
@@ -128,27 +156,10 @@ static NSString *lastLongPressedText = nil;
 
 - (void)setText:(NSString *)text {
     if (text && text.length > 0 && editedMessages[text]) {
-        NSLog(@"[EditTweak] Replacing UILabel text: %@ -> %@", text, editedMessages[text]);
+        NSLog(@"[EditTweak] Replacing UILabel: %@ -> %@", text, editedMessages[text]);
         %orig(editedMessages[text]);
     } else {
         %orig;
-    }
-}
-
-- (void)didMoveToWindow {
-    %orig;
-    // Подписываемся на уведомления об обновлении
-    [[NSNotificationCenter defaultCenter] addObserver:self 
-                                             selector:@selector(refreshText) 
-                                                 name:@"EditTweakMessageUpdated" 
-                                               object:nil];
-}
-
-%new
-- (void)refreshText {
-    NSString *currentText = self.text;
-    if (currentText && editedMessages[currentText]) {
-        [self setText:currentText];
     }
 }
 
@@ -159,7 +170,7 @@ static NSString *lastLongPressedText = nil;
 
 - (void)setText:(NSString *)text {
     if (text && text.length > 0 && editedMessages[text]) {
-        NSLog(@"[EditTweak] Replacing UITextView text: %@ -> %@", text, editedMessages[text]);
+        NSLog(@"[EditTweak] Replacing UITextView: %@ -> %@", text, editedMessages[text]);
         %orig(editedMessages[text]);
     } else {
         %orig;
