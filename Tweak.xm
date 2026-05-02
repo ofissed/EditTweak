@@ -34,7 +34,6 @@
 
 - (void)setAttributedText:(id)text {
     if ([text respondsToSelector:@selector(string)]) {
-        NSAttributedString *attr = (NSAttributedString *)text;
         NSString *newText = @"TEST_ASTEXT 😈";
         NSAttributedString *newAttr = [[NSAttributedString alloc] initWithString:newText];
         %orig(newAttr);
