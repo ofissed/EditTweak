@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
@@ -69,9 +70,6 @@ static void showEditDialog(UIViewController *fromVC) {
     editedMessages = [NSMutableDictionary new];
     NSLog(@"[EditTweak] ===== TWEAK LOADED =====");
     
-    // Создаем файл-маркер для проверки загрузки
-    [@"TWEAK LOADED" writeToFile:@"/var/mobile/Documents/EditTweak_loaded.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
-    
     // Показываем alert при загрузке
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"EditTweak"
@@ -85,6 +83,30 @@ static void showEditDialog(UIViewController *fromVC) {
         }
         [rootVC presentViewController:alert animated:YES completion:nil];
     });
+    
+    // Логируем все классы которые содержат "Menu", "Action", "Context", "Copy"
+    unsigned int classCount;
+    Class *classes = objc_copyClassList(&classCount);
+    
+    NSMutableString *log = [NSMutableString stringWithString:@"=== Telegram Classes ===\n"];
+    for (unsigned int i = 0; i < classCount; i++) {
+        const char *className = class_getName(classes[i]);
+        NSString *classNameStr = [NSString stringWithUTF8String:className];
+        
+        if ([classNameStr containsString:@"Menu"] || 
+            [classNameStr containsString:@"Action"] ||
+            [classNameStr containsString:@"Context"] ||
+            [classNameStr containsString:@"Copy"] ||
+            [classNameStr containsString:@"Message"] ||
+            [classNameStr containsString:@"Cell"]) {
+            [log appendFormat:@"%@\n", classNameStr];
+        }
+    }
+    free(classes);
+    
+    // Записываем в файл
+    [log writeToFile:@"/var/mobile/Documents/telegram_classes.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    NSLog(@"[EditTweak] Classes logged to /var/mobile/Documents/telegram_classes.txt");
 }
 
 // Хук UILongPressGestureRecognizer для захвата текста
