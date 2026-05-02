@@ -1,7 +1,7 @@
 Package: com.yourname.telegrameditanymessage
 Name: Telegram Edit Any Message
 Version: 1.0.0
-Architecture: iphoneos-arm
+Architecture: iphoneos-arm64
 Description: Позволяет визуально редактировать любые сообщения в Telegram локально
 Maintainer: YourName
 Author: YourName
