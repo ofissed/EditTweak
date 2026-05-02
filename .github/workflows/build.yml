@@ -18,27 +18,30 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git curl build-essential libssl-dev fakeroot perl clang
+          sudo apt-get install -y git curl build-essential fakeroot perl clang-12 lld-12
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100
       
       - name: Setup Theos
         run: |
-          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
-          sudo chown -R $(whoami):$(whoami) /opt/theos
-          echo "THEOS=/opt/theos" >> $GITHUB_ENV
-          echo "/opt/theos/bin" >> $GITHUB_PATH
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          echo "$HOME/theos/bin" >> $GITHUB_PATH
       
       - name: Download iOS SDK
         run: |
-          cd /opt/theos
-          curl -LO https://github.com/theos/sdks/archive/master.zip
-          unzip master.zip
-          mv sdks-master/*.sdk sdks/ 2>/dev/null || true
-          rm -rf sdks-master master.zip
+          mkdir -p $HOME/theos/sdks
+          cd $HOME/theos/sdks
+          curl -LO https://github.com/theos/sdks/releases/download/master/iPhoneOS14.5.sdk.tar.xz
+          tar -xf iPhoneOS14.5.sdk.tar.xz
+          rm iPhoneOS14.5.sdk.tar.xz
       
       - name: Build tweak
         run: |
-          export THEOS=/opt/theos
-          make package
+          export THEOS=$HOME/theos
+          export PATH=$HOME/theos/bin:$PATH
+          make clean || true
+          make package FINALPACKAGE=1
       
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
