@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <sys/sysctl.h>
+#import <sys/utsname.h>
 
 %ctor {
     NSLog(@"[DeviceSpoofer] Loaded - iPhone X → iPhone 15 Pro Max");
