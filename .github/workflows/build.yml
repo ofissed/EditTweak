@@ -1,0 +1,56 @@
+name: Build iOS Tweak
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git curl build-essential libssl-dev fakeroot perl clang
+    
+    - name: Setup Theos
+      run: |
+        sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
+        sudo chown -R $(whoami):$(whoami) /opt/theos
+        echo "THEOS=/opt/theos" >> $GITHUB_ENV
+        echo "/opt/theos/bin" >> $GITHUB_PATH
+    
+    - name: Download iOS SDK
+      run: |
+        cd /opt/theos
+        curl -LO https://github.com/theos/sdks/archive/master.zip
+        unzip master.zip
+        mv sdks-master/*.sdk sdks/ 2>/dev/null || true
+        rm -rf sdks-master master.zip
+    
+    - name: Build tweak
+      run: |
+        export THEOS=/opt/theos
+        make package
+    
+    - name: Upload DEB package
+      uses: actions/upload-artifact@v3
+      with:
+        name: TelegramEditAnyMessage
+        path: packages/*.deb
+        if-no-files-found: error
+    
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: packages/*.deb
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
