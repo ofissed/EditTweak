@@ -114,26 +114,29 @@ static void showEditDialog(UIViewController *fromVC) {
     
     NSLog(@"[EditTweak] Text copied: %@", string);
     
-    // Сохраняем текст
-    if (!lastLongPressedText || lastLongPressedText.length == 0) {
-        lastLongPressedText = string;
-    }
-    
-    // Показываем диалог при любом копировании
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        NSLog(@"[EditTweak] Showing edit dialog...");
+    // Показываем alert что копирование перехвачено
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIAlertController *debugAlert = [UIAlertController alertControllerWithTitle:@"EditTweak Debug"
+                                                                             message:[NSString stringWithFormat:@"Перехвачено копирование: %@", string]
+                                                                      preferredStyle:UIAlertControllerStyleAlert];
+        [debugAlert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
         
         UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
         while (rootVC.presentedViewController) {
             rootVC = rootVC.presentedViewController;
         }
-        
-        if (rootVC) {
-            NSLog(@"[EditTweak] Found rootVC: %@", NSStringFromClass([rootVC class]));
-            showEditDialog(rootVC);
-        } else {
-            NSLog(@"[EditTweak] ERROR: No rootVC found!");
-        }
+        [rootVC presentViewController:debugAlert animated:YES completion:nil];
+    });
+    
+    // Сохраняем текст
+    if (!lastLongPressedText || lastLongPressedText.length == 0) {
+        lastLongPressedText = string;
+    }
+    
+    // Показываем диалог редактирования
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        NSLog(@"[EditTweak] Showing edit dialog...");
+        showEditDialog(nil);
     });
 }
 
