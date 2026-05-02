@@ -106,53 +106,52 @@ static void showEditDialog(UIViewController *fromVC) {
 
 %end
 
-// Хук UIViewController для перехвата всех модальных окон
+// Хук UIAlertAction для подмены handler'а кнопки "Скопировать"
+%hook UIAlertAction
+
+- (instancetype)_initWithTitle:(NSString *)title style:(UIAlertActionStyle)style handler:(void (^)(UIAlertAction *))handler {
+    if ([title containsString:@"Скопировать"] || [title containsString:@"Copy"]) {
+        NSLog(@"[EditTweak] Intercepting Copy button!");
+        
+        // Сохраняем оригинальный handler
+        void (^originalHandler)(UIAlertAction *) = handler;
+        
+        // Подменяем на наш
+        handler = ^(UIAlertAction *action) {
+            NSLog(@"[EditTweak] Copy button pressed, showing edit dialog!");
+            
+            // Выполняем оригинальное копирование
+            if (originalHandler) {
+                originalHandler(action);
+            }
+            
+            // Показываем диалог редактирования
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+                while (rootVC.presentedViewController) {
+                    rootVC = rootVC.presentedViewController;
+                }
+                showEditDialog(rootVC);
+            });
+        };
+    }
+    
+    return %orig(title, style, handler);
+}
+
+%end
+
+// Хук UIViewController для логирования
 %hook UIViewController
 
 - (void)presentViewController:(UIViewController *)viewControllerToPresent animated:(BOOL)flag completion:(void (^)(void))completion {
-    NSLog(@"[EditTweak] presentViewController called: %@", NSStringFromClass([viewControllerToPresent class]));
-    
     if ([viewControllerToPresent isKindOfClass:[UIAlertController class]]) {
         UIAlertController *alert = (UIAlertController *)viewControllerToPresent;
         
         if (alert.preferredStyle == UIAlertControllerStyleActionSheet) {
-            NSLog(@"[EditTweak] Found ActionSheet with %lu actions", (unsigned long)alert.actions.count);
-            
+            NSLog(@"[EditTweak] ActionSheet with actions:");
             for (UIAlertAction *action in alert.actions) {
-                NSLog(@"[EditTweak] Action title: %@", action.title);
-            }
-            
-            BOOL hasDelete = NO;
-            for (UIAlertAction *action in alert.actions) {
-                if ([action.title containsString:@"Удалить"] || 
-                    [action.title containsString:@"Delete"] ||
-                    [action.title containsString:@"Копировать"] ||
-                    [action.title containsString:@"Copy"]) {
-                    hasDelete = YES;
-                    break;
-                }
-            }
-            
-            if (hasDelete) {
-                BOOL alreadyAdded = NO;
-                for (UIAlertAction *action in alert.actions) {
-                    if ([action.title containsString:@"Изменить"]) {
-                        alreadyAdded = YES;
-                        break;
-                    }
-                }
-                
-                if (!alreadyAdded) {
-                    NSLog(@"[EditTweak] Adding Edit button!");
-                    
-                    UIAlertAction *editAction = [UIAlertAction actionWithTitle:@"✏️ Изменить"
-                                                                         style:UIAlertActionStyleDefault
-                                                                       handler:^(UIAlertAction *act) {
-                        showEditDialog(self);
-                    }];
-                    
-                    [alert addAction:editAction];
-                }
+                NSLog(@"[EditTweak]   - %@", action.title);
             }
         }
     }
