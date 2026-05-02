@@ -68,6 +68,23 @@ static void showEditDialog(UIViewController *fromVC) {
 %ctor {
     editedMessages = [NSMutableDictionary new];
     NSLog(@"[EditTweak] ===== TWEAK LOADED =====");
+    
+    // Создаем файл-маркер для проверки загрузки
+    [@"TWEAK LOADED" writeToFile:@"/var/mobile/Documents/EditTweak_loaded.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    
+    // Показываем alert при загрузке
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"EditTweak"
+                                                                       message:@"Твик загружен!"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+        
+        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+        while (rootVC.presentedViewController) {
+            rootVC = rootVC.presentedViewController;
+        }
+        [rootVC presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 // Хук UILongPressGestureRecognizer для захвата текста
