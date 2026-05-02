@@ -1,7 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <sys/sysctl.h>
-#import <sys/utsname.h>
 
 %ctor {
     NSLog(@"[DeviceSpoofer] Loaded - iPhone X → iPhone 15 Pro Max");
@@ -54,15 +53,4 @@
     }
     
     return %orig;
-}
-
-// Хук uname для подмены machine
-%hookf(int, uname, struct utsname *buf) {
-    int result = %orig;
-    
-    if (result == 0 && buf) {
-        strcpy(buf->machine, "iPhone16,2");
-    }
-    
-    return result;
 }
