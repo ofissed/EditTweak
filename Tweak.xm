@@ -4,6 +4,14 @@
 @interface ASTextNode : NSObject
 @end
 
+@interface UIAction : NSObject
++ (instancetype)actionWithTitle:(NSString *)title image:(UIImage *)image identifier:(NSString *)identifier handler:(void (^)(UIAction *))handler;
+@end
+
+@interface UIMenu : NSObject
++ (instancetype)menuWithTitle:(NSString *)title children:(NSArray *)children;
+@end
+
 %hook UILabel
 
 - (void)setText:(NSString *)text {
