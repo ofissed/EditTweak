@@ -1,0 +1,9 @@
+Package: com.yourname.devicespoofer
+Name: Device Spoofer
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Подменяет iPhone X на iPhone 15 Pro Max во всех приложениях
+Maintainer: YourName
+Author: YourName
+Section: Tweaks
+Depends: mobilesubstrate
