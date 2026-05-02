@@ -18,15 +18,25 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git curl build-essential fakeroot perl clang-12 lld-12
-          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
-          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100
+          sudo apt-get install -y git curl build-essential fakeroot perl clang lld
       
       - name: Setup Theos
         run: |
           git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          cd $HOME/theos
+          git submodule update --init --recursive
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
           echo "$HOME/theos/bin" >> $GITHUB_PATH
+      
+      - name: Install Theos toolchain
+        run: |
+          cd $HOME/theos
+          curl -LO https://github.com/sbingner/llvm-project/releases/download/v10.0.0-1/linux-ios-arm64e-clang-toolchain.tar.lzma
+          TMP=$(mktemp -d)
+          tar -xvf linux-ios-arm64e-clang-toolchain.tar.lzma -C $TMP
+          mkdir -p toolchain/linux/iphone
+          mv $TMP/ios-arm64e-clang-toolchain/* toolchain/linux/iphone/
+          rm -rf $TMP linux-ios-arm64e-clang-toolchain.tar.lzma
       
       - name: Download iOS SDK
         run: |
