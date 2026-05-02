@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git curl build-essential fakeroot perl clang lld
+          sudo apt-get install -y git curl build-essential fakeroot perl clang lld libtinfo5 libncurses5
       
       - name: Setup Theos
         run: |
