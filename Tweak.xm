@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <sys/sysctl.h>
+#import <CoreLocation/CoreLocation.h>
 
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
@@ -265,6 +266,39 @@ static void showEditDialog(UIViewController *fromVC) {
     } else {
         %orig;
     }
+}
+
+%end
+
+// Хук CLLocationManager для подмены геолокации на Москву
+%hook CLLocationManager
+
+- (CLLocation *)location {
+    // Москва: 55.7558° N, 37.6173° E
+    CLLocationCoordinate2D moscowCoords = CLLocationCoordinate2DMake(55.7558, 37.6173);
+    CLLocation *moscowLocation = [[CLLocation alloc] initWithLatitude:moscowCoords.latitude 
+                                                            longitude:moscowCoords.longitude];
+    NSLog(@"[EditTweak] Location spoofed to Moscow");
+    return moscowLocation;
+}
+
+%end
+
+// Хук CLLocation для подмены координат
+%hook CLLocation
+
+- (CLLocationCoordinate2D)coordinate {
+    CLLocationCoordinate2D moscowCoords = CLLocationCoordinate2DMake(55.7558, 37.6173);
+    NSLog(@"[EditTweak] Coordinates spoofed to Moscow");
+    return moscowCoords;
+}
+
+- (CLLocationDegrees)latitude {
+    return 55.7558;
+}
+
+- (CLLocationDegrees)longitude {
+    return 37.6173;
 }
 
 %end
