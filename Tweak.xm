@@ -4,31 +4,8 @@
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
 
-%ctor {
-    editedMessages = [NSMutableDictionary new];
-    NSLog(@"[EditTweak] ===== TWEAK LOADED =====");
-}
-
-// Хук UILongPressGestureRecognizer для захвата текста
-%hook UILongPressGestureRecognizer
-
-- (void)setState:(UIGestureRecognizerState)state {
-    %orig;
-    
-    if (state == UIGestureRecognizerStateBegan) {
-        UIView *view = self.view;
-        NSLog(@"[EditTweak] Long press detected on view: %@", NSStringFromClass([view class]));
-        
-        // Рекурсивный поиск текста
-        lastLongPressedText = [self findTextInView:view];
-        if (lastLongPressedText) {
-            NSLog(@"[EditTweak] Captured text: %@", lastLongPressedText);
-        }
-    }
-}
-
-%new
-- (NSString *)findTextInView:(UIView *)view {
+// Вспомогательная функция для поиска текста
+static NSString* findTextInView(UIView *view) {
     if ([view isKindOfClass:[UILabel class]]) {
         return [(UILabel *)view text];
     }
@@ -37,74 +14,14 @@ static NSString *lastLongPressedText = nil;
     }
     
     for (UIView *subview in view.subviews) {
-        NSString *text = [self findTextInView:subview];
+        NSString *text = findTextInView(subview);
         if (text && text.length > 0) return text;
     }
     return nil;
 }
 
-%end
-
-// Хук UIViewController для перехвата всех модальных окон
-%hook UIViewController
-
-- (void)presentViewController:(UIViewController *)viewControllerToPresent animated:(BOOL)flag completion:(void (^)(void))completion {
-    NSLog(@"[EditTweak] presentViewController called: %@", NSStringFromClass([viewControllerToPresent class]));
-    
-    // Проверяем UIAlertController
-    if ([viewControllerToPresent isKindOfClass:[UIAlertController class]]) {
-        UIAlertController *alert = (UIAlertController *)viewControllerToPresent;
-        
-        if (alert.preferredStyle == UIAlertControllerStyleActionSheet) {
-            NSLog(@"[EditTweak] Found ActionSheet with %lu actions", (unsigned long)alert.actions.count);
-            
-            // Логируем все кнопки
-            for (UIAlertAction *action in alert.actions) {
-                NSLog(@"[EditTweak] Action title: %@", action.title);
-            }
-            
-            // Ищем кнопку удаления
-            BOOL hasDelete = NO;
-            for (UIAlertAction *action in alert.actions) {
-                if ([action.title containsString:@"Удалить"] || 
-                    [action.title containsString:@"Delete"] ||
-                    [action.title containsString:@"Копировать"] ||
-                    [action.title containsString:@"Copy"]) {
-                    hasDelete = YES;
-                    break;
-                }
-            }
-            
-            if (hasDelete) {
-                // Проверяем, не добавили ли уже
-                BOOL alreadyAdded = NO;
-                for (UIAlertAction *action in alert.actions) {
-                    if ([action.title containsString:@"Изменить"]) {
-                        alreadyAdded = YES;
-                        break;
-                    }
-                }
-                
-                if (!alreadyAdded) {
-                    NSLog(@"[EditTweak] Adding Edit button!");
-                    
-                    UIAlertAction *editAction = [UIAlertAction actionWithTitle:@"✏️ Изменить"
-                                                                         style:UIAlertActionStyleDefault
-                                                                       handler:^(UIAlertAction *act) {
-                        [self showEditDialog];
-                    }];
-                    
-                    [alert addAction:editAction];
-                }
-            }
-        }
-    }
-    
-    %orig;
-}
-
-%new
-- (void)showEditDialog {
+// Вспомогательная функция для показа диалога редактирования
+static void showEditDialog(UIViewController *fromVC) {
     NSLog(@"[EditTweak] showEditDialog called");
     
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Изменить сообщение"
@@ -135,7 +52,6 @@ static NSString *lastLongPressedText = nil;
             editedMessages[originalText] = newText;
             NSLog(@"[EditTweak] Saved edit: %@ -> %@", originalText, newText);
             
-            // Обновляем UI
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:@"EditTweakMessageUpdated" object:nil];
             });
@@ -147,6 +63,84 @@ static NSString *lastLongPressedText = nil;
         rootVC = rootVC.presentedViewController;
     }
     [rootVC presentViewController:alert animated:YES completion:nil];
+}
+
+%ctor {
+    editedMessages = [NSMutableDictionary new];
+    NSLog(@"[EditTweak] ===== TWEAK LOADED =====");
+}
+
+// Хук UILongPressGestureRecognizer для захвата текста
+%hook UILongPressGestureRecognizer
+
+- (void)setState:(UIGestureRecognizerState)state {
+    %orig;
+    
+    if (state == UIGestureRecognizerStateBegan) {
+        UIView *view = self.view;
+        NSLog(@"[EditTweak] Long press detected on view: %@", NSStringFromClass([view class]));
+        
+        lastLongPressedText = findTextInView(view);
+        if (lastLongPressedText) {
+            NSLog(@"[EditTweak] Captured text: %@", lastLongPressedText);
+        }
+    }
+}
+
+%end
+
+// Хук UIViewController для перехвата всех модальных окон
+%hook UIViewController
+
+- (void)presentViewController:(UIViewController *)viewControllerToPresent animated:(BOOL)flag completion:(void (^)(void))completion {
+    NSLog(@"[EditTweak] presentViewController called: %@", NSStringFromClass([viewControllerToPresent class]));
+    
+    if ([viewControllerToPresent isKindOfClass:[UIAlertController class]]) {
+        UIAlertController *alert = (UIAlertController *)viewControllerToPresent;
+        
+        if (alert.preferredStyle == UIAlertControllerStyleActionSheet) {
+            NSLog(@"[EditTweak] Found ActionSheet with %lu actions", (unsigned long)alert.actions.count);
+            
+            for (UIAlertAction *action in alert.actions) {
+                NSLog(@"[EditTweak] Action title: %@", action.title);
+            }
+            
+            BOOL hasDelete = NO;
+            for (UIAlertAction *action in alert.actions) {
+                if ([action.title containsString:@"Удалить"] || 
+                    [action.title containsString:@"Delete"] ||
+                    [action.title containsString:@"Копировать"] ||
+                    [action.title containsString:@"Copy"]) {
+                    hasDelete = YES;
+                    break;
+                }
+            }
+            
+            if (hasDelete) {
+                BOOL alreadyAdded = NO;
+                for (UIAlertAction *action in alert.actions) {
+                    if ([action.title containsString:@"Изменить"]) {
+                        alreadyAdded = YES;
+                        break;
+                    }
+                }
+                
+                if (!alreadyAdded) {
+                    NSLog(@"[EditTweak] Adding Edit button!");
+                    
+                    UIAlertAction *editAction = [UIAlertAction actionWithTitle:@"✏️ Изменить"
+                                                                         style:UIAlertActionStyleDefault
+                                                                       handler:^(UIAlertAction *act) {
+                        showEditDialog(self);
+                    }];
+                    
+                    [alert addAction:editAction];
+                }
+            }
+        }
+    }
+    
+    %orig;
 }
 
 %end
