@@ -6,4 +6,4 @@ Description: Позволяет визуально редактировать л
 Maintainer: YourName
 Author: YourName
 Section: Tweaks
-Depends: mobilesubstrate, preferenceloader
+Depends: mobilesubstrate

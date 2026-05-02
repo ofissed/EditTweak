@@ -1,7 +1,7 @@
-// Telegram Edit Any Message Tweak
-// Базовый твик для тестирования
+// Telegram Edit Any Message Tweak (test)
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
 %hook SpringBoard
 
