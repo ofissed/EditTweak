@@ -40,11 +40,10 @@ jobs:
       
       - name: Download iOS SDK
         run: |
-          mkdir -p $HOME/theos/sdks
-          cd $HOME/theos/sdks
-          curl -LO https://github.com/theos/sdks/releases/download/master/iPhoneOS14.5.sdk.tar.xz
-          tar -xf iPhoneOS14.5.sdk.tar.xz
-          rm iPhoneOS14.5.sdk.tar.xz
+          cd $HOME/theos
+          git clone --depth=1 https://github.com/theos/sdks.git sdks-repo
+          mv sdks-repo/*.sdk sdks/ 2>/dev/null || true
+          rm -rf sdks-repo
       
       - name: Build tweak
         run: |
