@@ -2,6 +2,8 @@
 
 Твик для Telegram, который позволяет локально редактировать любые сообщения (изменения видны только у вас).
 
+[![Build Status](https://github.com/ofissed/EditTweak/workflows/Build%20iOS%20Tweak/badge.svg)](https://github.com/ofissed/EditTweak/actions)
+
 ## Возможности
 
 - ✏️ Добавляет кнопку "Изменить" в контекстное меню любого сообщения
