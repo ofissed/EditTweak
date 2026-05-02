@@ -28,8 +28,8 @@
 %hook ASTextNode
 
 - (void)setAttributedText:(NSAttributedString *)text {
-    if ([text isKindOfClass:[NSAttributedString class]] && text.string.length > 0) {
-        NSLog(@"[ASTextNode] %@ | %@", text.string, NSStringFromClass([self class]));
+    if ([text isKindOfClass:[NSAttributedString class]] && text.length > 0) {
+        NSLog(@"[ASTextNode] %@", text);
     }
     %orig;
 }
