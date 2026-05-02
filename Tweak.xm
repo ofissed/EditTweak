@@ -111,31 +111,41 @@ static void showEditDialog(UIViewController *fromVC) {
 
 - (void)setString:(NSString *)string {
     %orig;
+    NSLog(@"[EditTweak] setString called: %@", string);
+    [self showEditDialogForText:string];
+}
+
+- (void)setValue:(id)value forPasteboardType:(NSString *)pasteboardType {
+    %orig;
+    NSLog(@"[EditTweak] setValue:forPasteboardType called: %@ type: %@", value, pasteboardType);
     
-    NSLog(@"[EditTweak] Text copied: %@", string);
-    
-    // Показываем alert что копирование перехвачено
-    dispatch_async(dispatch_get_main_queue(), ^{
-        UIAlertController *debugAlert = [UIAlertController alertControllerWithTitle:@"EditTweak Debug"
-                                                                             message:[NSString stringWithFormat:@"Перехвачено копирование: %@", string]
-                                                                      preferredStyle:UIAlertControllerStyleAlert];
-        [debugAlert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-        
-        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
-        while (rootVC.presentedViewController) {
-            rootVC = rootVC.presentedViewController;
-        }
-        [rootVC presentViewController:debugAlert animated:YES completion:nil];
-    });
-    
-    // Сохраняем текст
-    if (!lastLongPressedText || lastLongPressedText.length == 0) {
-        lastLongPressedText = string;
+    if ([value isKindOfClass:[NSString class]]) {
+        [self showEditDialogForText:(NSString *)value];
     }
+}
+
+- (void)setItems:(NSArray *)items {
+    %orig;
+    NSLog(@"[EditTweak] setItems called with %lu items", (unsigned long)items.count);
     
-    // Показываем диалог редактирования
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        NSLog(@"[EditTweak] Showing edit dialog...");
+    for (NSDictionary *item in items) {
+        NSLog(@"[EditTweak] Item: %@", item);
+        NSString *text = item[@"public.plain-text"] ?: item[@"public.utf8-plain-text"];
+        if (text) {
+            [self showEditDialogForText:text];
+            break;
+        }
+    }
+}
+
+%new
+- (void)showEditDialogForText:(NSString *)text {
+    if (!text || text.length == 0) return;
+    
+    lastLongPressedText = text;
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        NSLog(@"[EditTweak] Showing edit dialog for: %@", text);
         showEditDialog(nil);
     });
 }
