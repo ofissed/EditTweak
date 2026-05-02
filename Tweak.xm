@@ -114,19 +114,22 @@ static void showEditDialog(UIViewController *fromVC) {
     
     NSLog(@"[EditTweak] Text copied to clipboard: %@", string);
     
-    // Сохраняем скопированный текст
-    lastLongPressedText = string;
-    
-    // Показываем диалог редактирования через 0.5 сек
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        NSLog(@"[EditTweak] Showing edit dialog after copy...");
+    // Проверяем что это копирование из долгого нажатия на сообщение
+    // (lastLongPressedText должен быть установлен)
+    if (lastLongPressedText && [string isEqualToString:lastLongPressedText]) {
+        NSLog(@"[EditTweak] This is a message copy, showing edit dialog...");
         
-        UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
-        while (rootVC.presentedViewController) {
-            rootVC = rootVC.presentedViewController;
-        }
-        showEditDialog(rootVC);
-    });
+        // Показываем диалог редактирования через 0.5 сек
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            UIViewController *rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+            while (rootVC.presentedViewController) {
+                rootVC = rootVC.presentedViewController;
+            }
+            showEditDialog(rootVC);
+        });
+    } else {
+        NSLog(@"[EditTweak] Regular copy, ignoring");
+    }
 }
 
 %end
