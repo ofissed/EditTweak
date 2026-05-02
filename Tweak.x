@@ -1,6 +1,8 @@
 // Telegram Edit Any Message Tweak
 // Базовый твик для тестирования
 
+#import <Foundation/Foundation.h>
+
 %hook SpringBoard
 
 - (void)applicationDidFinishLaunching:(id)application {
