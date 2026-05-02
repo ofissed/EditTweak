@@ -45,18 +45,16 @@ jobs:
           mv sdks-repo/*.sdk sdks/ 2>/dev/null || true
           rm -rf sdks-repo
       
-      - name: Build Device Spoofer tweak
+      - name: Build Telegram tweak
         run: |
           export THEOS=$HOME/theos
           export PATH=$HOME/theos/bin:$PATH
-          cp Makefile_spoofer Makefile
-          cp control_spoofer control
           make clean || true
           make package FINALPACKAGE=1
       
-      - name: Upload Device Spoofer tweak
+      - name: Upload Telegram tweak
         uses: actions/upload-artifact@v4
         with:
-          name: DeviceSpoofer
-          path: packages/com.yourname.devicespoofer*.deb
+          name: TelegramEditAnyMessage
+          path: packages/com.yourname.telegrameditanymessage*.deb
           if-no-files-found: error

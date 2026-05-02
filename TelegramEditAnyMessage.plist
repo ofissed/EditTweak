@@ -1,7 +1,12 @@
 {
     Filter = {
         Bundles = (
-            "ph.telegra.Telegraph"
+            "ph.telegra.Telegraph",
+            "com.apple.Preferences",
+            "com.apple.UIKit"
+        );
+        Executables = (
+            "SpringBoard"
         );
     };
 }
