@@ -170,15 +170,24 @@ static void showEditDialog(UIViewController *fromVC) {
 - (void)setString:(NSString *)string {
     %orig;
     NSLog(@"[EditTweak] setString called: %@", string);
-    [self showEditDialogForText:string];
+    
+    if (string && string.length > 0) {
+        lastLongPressedText = string;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            showEditDialog(nil);
+        });
+    }
 }
 
 - (void)setValue:(id)value forPasteboardType:(NSString *)pasteboardType {
     %orig;
     NSLog(@"[EditTweak] setValue:forPasteboardType called: %@ type: %@", value, pasteboardType);
     
-    if ([value isKindOfClass:[NSString class]]) {
-        [self showEditDialogForText:(NSString *)value];
+    if ([value isKindOfClass:[NSString class]] && [(NSString *)value length] > 0) {
+        lastLongPressedText = (NSString *)value;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+            showEditDialog(nil);
+        });
     }
 }
 
@@ -189,23 +198,14 @@ static void showEditDialog(UIViewController *fromVC) {
     for (NSDictionary *item in items) {
         NSLog(@"[EditTweak] Item: %@", item);
         NSString *text = item[@"public.plain-text"] ?: item[@"public.utf8-plain-text"];
-        if (text) {
-            [self showEditDialogForText:text];
+        if (text && text.length > 0) {
+            lastLongPressedText = text;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                showEditDialog(nil);
+            });
             break;
         }
     }
-}
-
-%new
-- (void)showEditDialogForText:(NSString *)text {
-    if (!text || text.length == 0) return;
-    
-    lastLongPressedText = text;
-    
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-        NSLog(@"[EditTweak] Showing edit dialog for: %@", text);
-        showEditDialog(nil);
-    });
 }
 
 %end
