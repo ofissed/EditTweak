@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <sys/sysctl.h>
 
 static NSMutableDictionary *editedMessages;
 static NSString *lastLongPressedText = nil;
@@ -73,7 +74,7 @@ static void showEditDialog(UIViewController *fromVC) {
     // Показываем alert при загрузке
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"EditTweak"
-                                                                       message:@"Твик загружен!"
+                                                                       message:@"Твик загружен! Модель: iPhone 15 Pro Max"
                                                                 preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
         
@@ -107,6 +108,41 @@ static void showEditDialog(UIViewController *fromVC) {
     // Записываем в файл
     [log writeToFile:@"/var/mobile/Documents/telegram_classes.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     NSLog(@"[EditTweak] Classes logged to /var/mobile/Documents/telegram_classes.txt");
+}
+
+// Хук UIDevice для подмены модели телефона
+%hook UIDevice
+
+- (NSString *)model {
+    return @"iPhone";
+}
+
+- (NSString *)localizedModel {
+    return @"iPhone";
+}
+
+- (NSString *)name {
+    return @"iPhone 15 Pro Max";
+}
+
+%end
+
+// Хук для sysctlbyname (более глубокая подмена)
+%hookf(int, sysctlbyname, const char *name, void *oldp, size_t *oldlenp, void *newp, size_t newlen) {
+    if (name && strcmp(name, "hw.machine") == 0) {
+        // iPhone 15 Pro Max = iPhone16,2
+        if (oldp && oldlenp) {
+            const char *spoofed = "iPhone16,2";
+            size_t len = strlen(spoofed) + 1;
+            if (*oldlenp >= len) {
+                strcpy((char *)oldp, spoofed);
+                *oldlenp = len;
+                return 0;
+            }
+        }
+    }
+    
+    return %orig;
 }
 
 // Хук UILongPressGestureRecognizer для захвата текста
